@@ -10,20 +10,18 @@ export PT_HPU_POOL_MEM_ACQUIRE_PERC=100
 export PT_HPU_RECIPE_CACHE_CONFIG=$PWD/pt_cache,True,20000
 # export PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES=1
 export LOCAL_RANK_MAP=$(hl-smi -Q module_id -f csv | tail -n +2 | tr '\n' ',' | sed 's/,$//')
-MODEL_VER=responder_v2_mpt
+MODEL_VER=2b-it
 DATA_DIR=/data0/visual-llama
-#DATA_DIR=/scratch1/data
+#DATA_DIR=/data1/visual-llama
 TOTAL_BATCH_SIZE=256
 MODEL_PATH=google/gemma-$MODEL_VER
-MODEL_PATH=/workspace/ola_mpt_training/responder_v2_mpt/
+
 if [ "$MODEL_VER" = "2b-it" ]; then
-    DEVICE_BATCHSIZE=16
+    DEVICE_BATCHSIZE=2
 elif [ "$MODEL_VER" = "7b-it" ]; then
     DEVICE_BATCHSIZE=8
 fi
-DEVICE_BATCHSIZE=16
 
-HABANA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
 HPU_IDS=(${HABANA_VISIBLE_DEVICES//,/ })
 NUM_HPU=${#HPU_IDS[@]}
 GRAD_ACC=$((TOTAL_BATCH_SIZE / (DEVICE_BATCHSIZE * NUM_HPU)))
@@ -31,7 +29,6 @@ GRAD_ACC=$((TOTAL_BATCH_SIZE / (DEVICE_BATCHSIZE * NUM_HPU)))
 echo "Habana devices: [$HABANA_VISIBLE_DEVICES]"
 echo "Total batch size: $TOTAL_BATCH_SIZE"
 echo "Device batch size: $DEVICE_BATCHSIZE"
-echo "HPU_IDS: $HPU_IDS"
 echo "Number of HPUs: $NUM_HPU"
 echo "Gradient accumulation steps: $GRAD_ACC"
 
@@ -45,7 +42,7 @@ echo "Output dir: $OUTPUT_DIR"
 deepspeed llava/train/train_mem.py \
     --deepspeed ./scripts/zero2_gaudi.json \
     --model_name_or_path $MODEL_PATH \
-    --version plain \
+    --version gemma \
     --data_path $DATA_DIR/datasets/LLaVA-Pretrain/blip_laion_cc_sbu_558k.json \
     --image_folder $DATA_DIR/datasets/LLaVA-Pretrain \
     --vision_tower openai/clip-vit-large-patch14-336 \
@@ -55,10 +52,10 @@ deepspeed llava/train/train_mem.py \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --bf16 True \
-    --output_dir $DATA_DIR/checkpoints/llava-mpt-${MODEL_VER}-pretrain_2k \
+    --output_dir $DATA_DIR/checkpoints/llava-gemma-${MODEL_VER}-pretrain \
     --num_train_epochs 1 \
     --per_device_train_batch_size $DEVICE_BATCHSIZE \
-    --per_device_eval_batch_size 1 \
+    --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps $GRAD_ACC \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
@@ -77,4 +74,4 @@ deepspeed llava/train/train_mem.py \
     --use_habana --use_lazy_mode \
     --distribution_strategy fast_ddp \
     --gaudi_config ./scripts/gaudi_config.json \
-    --report_to tensorboard --mpt_attn_impl torch
+    --report_to tensorboard
