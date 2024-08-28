@@ -215,6 +215,8 @@ def find_all_linear_names(model):
 def safe_save_model_for_hf_trainer(trainer,
                                    output_dir: str):
     """Collects the state dict and dump to disk."""
+    if trainer.args.local_rank == 0 or trainer.args.local_rank == -1:
+        print("MMCAI: train.safe_save_model_for_hf_trainer: Start")
     if torch.cuda.is_available():
         torch.cuda.synchronize()
     else:
@@ -222,6 +224,8 @@ def safe_save_model_for_hf_trainer(trainer,
     trainer.control.should_log = False
     trainer.control.should_save = True
     trainer._maybe_log_save_evaluate(None, None, trainer.model, None, trainer.state.epoch, None)
+    if trainer.args.local_rank == 0 or trainer.args.local_rank == -1:
+        print("MMCAI: train.safe_save_model_for_hf_trainer: End")
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,

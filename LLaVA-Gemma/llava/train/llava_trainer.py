@@ -256,6 +256,8 @@ class LLaVATrainer(Trainer):
         return self.optimizer
 
     def _save_checkpoint(self, model, trial, metrics=None):
+        if self.args.local_rank == 0 or self.args.local_rank == -1:
+            print("MMCAI: LLaVATrainer._save_checkpoint: Start")
         if getattr(self.args, 'tune_mm_mlp_adapter', False):
             from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
@@ -271,9 +273,18 @@ class LLaVATrainer(Trainer):
             weight_to_save = get_mm_adapter_state_maybe_zero_3(self.model.named_parameters(), keys_to_match)
 
             if self.args.local_rank == 0 or self.args.local_rank == -1:
+                print("MMCAI: LLaVATrainer._save_checkpoint: Tune save")
                 self.model.config.save_pretrained(output_dir)
                 torch.save(weight_to_save, os.path.join(output_dir, f'mm_projector.bin'))
+        if self.args.local_rank == 0 or self.args.local_rank == -1:
+            print("MMCAI: LLaVATrainer._save_checkpoint: Super save")
         super(LLaVATrainer, self)._save_checkpoint(model, trial, metrics)
+        if self.args.local_rank == 0 or self.args.local_rank == -1:
+            print("MMCAI: LLaVATrainer._save_checkpoint: End")
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
+        if self.args.local_rank == 0 or self.args.local_rank == -1:
+            print("MMCAI: LLaVATrainer._save: Start")
         super(LLaVATrainer, self)._save(output_dir, state_dict)
+        if self.args.local_rank == 0 or self.args.local_rank == -1:
+            print("MMCAI: LLaVATrainer._save: End")
