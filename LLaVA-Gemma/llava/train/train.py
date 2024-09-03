@@ -737,7 +737,6 @@ def preprocess_gemma(
                     f"warning: tokenization mismatch: {cur_len} vs. {total_len}."
                     f" (ignored)"
                 )
-                
     return dict(
         input_ids=input_ids,
         labels=targets,
@@ -956,6 +955,12 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
+    print("model_args: ", model_args)
+    print("data_args: ", data_args)
+    print("training_args: ", training_args)
+    print("compute_dtype: ", compute_dtype)
+    print("attn_implementation: ", attn_implementation)
+
     if IS_HPU:
         local_rank_map = os.environ.get("LOCAL_RANK_MAP")
         if local_rank_map:
@@ -991,8 +996,12 @@ def train(attn_implementation=None):
                 model_args.model_name_or_path,
                 config=config,
                 cache_dir=training_args.cache_dir,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 **bnb_model_from_pretrained_args
             )
+            print("model: ", model)
+            print("model.dtype: ", model.dtype)
+            print("config: ", config)
         elif 'gemma' in model_args.model_name_or_path: # MH: model 
             logger.info("Using Gemma model.")
             model = LlavaGemmaForCausalLM.from_pretrained(
@@ -1104,6 +1113,8 @@ def train(attn_implementation=None):
         
         vision_tower = model.get_vision_tower()
         vision_tower.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
+        print("vision_tower: ", vision_tower)
+        print("vision_tower.dtype: ", vision_tower.dtype)
 
         data_args.image_processor = vision_tower.image_processor
         data_args.is_multimodal = True
