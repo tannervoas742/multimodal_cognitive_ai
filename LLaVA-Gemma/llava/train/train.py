@@ -910,7 +910,7 @@ class DataCollatorForSupervisedDataset(object):
 
         maxlen = self.tokenizer.model_max_length
         
-        if IS_HPU and input_ids.shape[-1] < maxlen:
+        if os.environ.get('PT_HPU_ENABLE_REFINE_DYNAMIC_SHAPES') == '0' and IS_HPU and input_ids.shape[-1] < maxlen:
             
             input_ids = torch.cat([input_ids, torch.full((input_ids.shape[0], maxlen-input_ids.shape[-1]), self.tokenizer.pad_token_id)], dim=-1)
             labels = torch.cat([labels, torch.full((labels.shape[0], maxlen-labels.shape[-1]), IGNORE_INDEX)], dim=-1)
