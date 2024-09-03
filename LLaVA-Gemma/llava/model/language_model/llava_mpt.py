@@ -45,6 +45,8 @@ class LlavaMptModel(LlavaMetaModel, MptModel):
 
     def __init__(self, config: MptConfig):
         config.hidden_size = config.d_model
+        if IS_HPU == True:
+            config.init_device = 'hpu'
         super(LlavaMptModel, self).__init__(config)
     
     def embed_tokens(self, x):
@@ -57,6 +59,8 @@ class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         #super(MptForCausalLM, self).__init__(config)
+        if IS_HPU == True:
+            config.init_device = 'hpu'
         super().__init__(config)
         
         self.transformer = LlavaMptModel(config)
