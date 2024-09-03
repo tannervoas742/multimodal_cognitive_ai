@@ -376,14 +376,23 @@ class LlavaMetaForCausalLM(ABC):
         #         cur_img_tok_indices = torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist()
         #         valid_image_idx.extend(range(cur_image_idx, cur_image_idx+ len(cur_img_tok_indices)))
         #         cur_image_idx += len(cur_img_tok_indices)
-            
+
+        if labels is None:
+            labels = torch.full_like(input_ids, IGNORE_INDEX)
+
+        # print(f"\n\nImage Token Index: {IMAGE_TOKEN_INDEX}, Input_ids: {input_ids}")
         image_indices = torch.where(torch.logical_or(input_ids == IMAGE_TOKEN_INDEX, input_ids == IMAGE_TOKEN_INDEX+42))
+        # print(f"Image Indices: {image_indices}, Ignore Index: {IGNORE_INDEX}\n\n")
+
+        #image_indices = torch.where(torch.logical_or(input_ids == IMAGE_TOKEN_INDEX, input_ids == IMAGE_TOKEN_INDEX+42))
         input_ids[image_indices] = 0
         labels[image_indices] = IGNORE_INDEX
         input_embeds = self.get_model().embed_tokens(input_ids)
 
         input_embeds_clone = input_embeds.clone()
-        input_embeds_clone.retain_grad()
+        #input_embeds_clone.retain_grad()
+        if input_embeds_clone.requires_grad:
+            input_embeds_clone.retain_grad()
 
         input_embeds_clone[image_indices] = image_features.reshape(-1, input_embeds_clone.shape[-1])
         
