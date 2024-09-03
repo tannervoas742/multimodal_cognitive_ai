@@ -52,8 +52,8 @@ def load_image(image_file):
 
 def main(args):
 
-    if args.model_base is not None:
-        raise ValueError("model_base must be None. Otherwise build script will load something incorrectly.")
+    #if args.model_base is not None:
+    #    raise ValueError("model_base must be None. Otherwise build script will load something incorrectly.")
     # Model
     disable_torch_init()
 
