@@ -14,11 +14,9 @@ from vlm_eval.tasks import get_task_runner
 from .llava_evaluator import LLaVaGemmaGaudi
 
 # === Initializer Dispatch by Family ===
-FAMILY2INITIALIZER = {"llava-v15": LLaVaGemmaGaudi}
-
+ID2INITIALIZER = {"llava-gemma-v1.5": LLaVaGemmaGaudi}
 
 def load_vlm(
-    model_family: str,
     model_id: str,
     run_dir: Path,
     ocr: Optional[bool] = False,
@@ -28,9 +26,8 @@ def load_vlm(
     ddp_backend: str = 'hccl',
     gaudi_config_name: Optional[str] = None,
 ) -> VLM:
-    assert model_family in FAMILY2INITIALIZER, f"Model family `{model_family}` not supported!"
-    return FAMILY2INITIALIZER[model_family](
-        model_family=model_family,
+    assert model_id in ID2INITIALIZER, f"Model ID `{model_id}` not supported!"
+    return ID2INITIALIZER[model_id](
         model_id=model_id,
         run_dir=run_dir,
         load_precision=load_precision,
@@ -59,8 +56,7 @@ class EvaluationConfig:
     )
 
     # === Model Parameters =>> LLaVa ===
-    model_family: str = "llava-v15"
-    model_id: str = "llava-v1.5"
+    model_id: str = "llava-gemma-v1.5"
     model_dir: Path = "liuhaotian/llava-v1.5-7b"
 
     # Inference Parameters
@@ -106,7 +102,7 @@ def evaluate(cfg: EvaluationConfig) -> None:
 
     # Build the VLM --> Download/Load Pretrained Model from Checkpoint
     overwatch.info("Initializing VLM =>> Bundling Models, Image Processors, and Tokenizer")
-    vlm = load_vlm(cfg.model_family, cfg.model_id, cfg.run_dir, ocr=cfg.dataset.ocr, ddp_backend=cfg.ddp_backend, gaudi_config_name=cfg.gaudi_config_name)
+    vlm = load_vlm(cfg.model_id, cfg.run_dir, ocr=cfg.dataset.ocr, ddp_backend=cfg.ddp_backend, gaudi_config_name=cfg.gaudi_config_name)
 
     # Create Task Runner
     overwatch.info(f"Building Evaluation Runner for Dataset `{cfg.dataset.dataset_id}`")

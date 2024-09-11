@@ -42,7 +42,6 @@ overwatch = initialize_overwatch(__name__)
 class LLaVaGemmaGaudi(LLaVa):
     def __init__(
         self,
-        model_family: str,
         model_id: str,
         run_dir: Path,
         load_precision: str = "bf16",
@@ -53,7 +52,7 @@ class LLaVaGemmaGaudi(LLaVa):
         gaudi_config_name: Optional[str] = None,
         **_: str,
     ) -> None:
-        self.model_family, self.model_id, self.hub_path = model_family, model_id, run_dir
+        self.model_id, self.hub_path = model_id, run_dir
         self.ddp_backend = ddp_backend
         self.dtype = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}[load_precision]
         self.ocr = ocr
@@ -62,25 +61,11 @@ class LLaVaGemmaGaudi(LLaVa):
         disable_torch_init()
         self.model_name = get_model_name_from_path(str(self.hub_path))
 
-        if 'gemma' in self.model_name.lower():
-            self.conv_mode = "llava_gemma"
-            self.model_name = "llava_gemma"
-        elif "llama-2" in self.model_name.lower():
-            self.conv_mode = "llava_llama_2"
-        elif "mistral" in self.model_name.lower():
-            self.conv_mode = "mistral_instruct"
-        elif "v1.6-34b" in self.model_name.lower():
-            self.conv_mode = "chatml_direct"
-        elif "v1" in self.model_name.lower():
-            self.conv_mode = "llava_v1"
-        elif "mpt" in self.model_name.lower():
-            self.conv_mode = "mpt"
-        else:
-            self.conv_mode = "llava_v0"
+        self.conv_mode = "llava_gemma"
+        self.model_name = "llava_gemma"
 
         self._setup_devices()
         if self.distributed_state.is_main_process:
-            overwatch.info(f"model_family: {self.model_family}")
             overwatch.info(f"model_id: {self.model_id}")
             overwatch.info(f"model_name: {self.model_name}")
             overwatch.info(f"dtype: {self.dtype}")
