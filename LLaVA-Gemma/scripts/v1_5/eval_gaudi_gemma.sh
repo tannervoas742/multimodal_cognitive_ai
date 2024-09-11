@@ -4,6 +4,8 @@ export PYTHONPATH=$PWD
 
 # Limits internal graph size to 1000 Ops and reduces the lazy mode memory overheard.
 # This will be improved in future releases. Note: This may affect performance.
+#export PT_HPU_MAX_COMPOUND_OP_SIZE=1
+#export PT_HPU_MAX_COMPOUND_OP_SIZE=1000
 #export PT_HPU_MAX_COMPOUND_OP_SIZE=2000
 # Sets memory pool to consume the entire HBM memory.
 #export PT_HPU_POOL_MEM_ACQUIRE_PERC=100
@@ -17,11 +19,11 @@ export LOG_LEVEL=3
 # Export the LOCAL_RANK_MAP environment variable
 export LOCAL_RANK_MAP=$(hl-smi -Q module_id -f csv | tail -n +2 | tr '\n' ',' | sed 's/,$//')
 
-NUM_HPU=$(echo '$LOCAL_RANK_MAP' | awk -v col=1 '{$col=gsub(",", "", $col)+1; print}')
-# Supported families are "vqa-v2", "gqa"
-DATASET_FAMILY=${DATASET_FAMILY:-vqa-v2}
+NUM_HPU=$(echo "$LOCAL_RANK_MAP" | awk -v col=1 '{$col=gsub(",", "", $col)+1; print}')
+# Supported families are "vqa-v2", "gqa", "pope"
+DATASET_FAMILY=${DATASET_FAMILY:-gqa}
 # Typical variants include "full", "ocr-full", "subsampled", and "slim"
-DATASET_VARIANT=${DATASET_VARIANT:-slim}
+DATASET_VARIANT=${DATASET_VARIANT:-full}
 DATASET_DIR="/data0/visual-llama/datasets/vlm-evaluation"
 MODEL_DIR="/data0/visual-llama/checkpoints/llava-gemma-2b-it-finetune/checkpoint-5196"
 MODEL_ID="llava-gemma-v1.5"
