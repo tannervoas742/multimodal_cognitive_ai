@@ -1,35 +1,28 @@
 """
-llava.py
+llava_gemma_evaluator.py
 
-Class definition for the LLaVa VLM, wrapping utilities for VQA, image captioning, and (WIP) conditional likelihood
+Class definition for the LLaVa Gemma VLM, wrapping utilities for VQA, image captioning, and (WIP) conditional likelihood
 estimation.
 
-Reference: https://github.com/haotian-liu/LLaVA/tree/main
+References: https://github.com/haotian-liu/LLaVA/tree/main
+            https://github.com/TRI-ML/vlm-evaluation/blob/main/vlm_eval/models/llava.py
+            https://github.com/IntelLabs/multimodal_cognitive_ai/tree/main/LLaVA-Gemma
+            https://github.com/huggingface/optimum-habana/blob/820901ceb632db686c56c10b703301b9fb5d3c43/optimum/habana/transformers/training_args.py
+            https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
 """
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Union
 from datetime import timedelta
 
-import os
 import torch
-import torch.nn as nn
-import torchvision.transforms.functional as F
-from accelerate import PartialState
-from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.constants import IMAGE_TOKEN_INDEX
 from llava.conversation import conv_templates, SeparatorStyle
 from llava.model.builder import load_pretrained_model
 from llava.utils import disable_torch_init
-from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
-from llava.model import LlavaLlamaForCausalLM
-from PIL.Image import Image
-from transformers import AutoTokenizer, CLIPImageProcessor, TextStreamer
-from transformers.utils import is_accelerate_available, strtobool
-from transformers.training_args import ParallelMode
-from habana_frameworks.torch import hpu as hthpu
-import habana_frameworks.torch.core as htcore
+from llava.mm_utils import tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
+from transformers import TextStreamer
+from transformers.utils import is_accelerate_available
 from optimum.habana.accelerate.state import GaudiAcceleratorState, GaudiPartialState
-from optimum.habana.accelerate.utils import GaudiDistributedType
 from optimum.habana.transformers import GaudiConfig
 from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
 
@@ -52,6 +45,7 @@ class LLaVaGemmaGaudi(LLaVa):
         gaudi_config_name: Optional[str] = None,
         **_: str,
     ) -> None:
+        """Adapted from: https://github.com/tannervoas742/vlm-evaluation/blob/2092905d392e8dbedf01ed4b853df530e3cf9f35/vlm_eval/models/llava.py#L66"""
         self.model_id, self.hub_path = model_id, run_dir
         self.ddp_backend = ddp_backend
         self.dtype = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}[load_precision]
@@ -101,6 +95,7 @@ class LLaVaGemmaGaudi(LLaVa):
     def generate_answer(
         self, pixel_values: torch.Tensor, questions: List[str], return_string_probabilities: Optional[List[str]] = None
     ) -> Union[List[str], List[List[float]]]:
+        """Adapted from: https://github.com/tannervoas742/vlm-evaluation/blob/2092905d392e8dbedf01ed4b853df530e3cf9f35/vlm_eval/models/llava.py#L358"""
         # By default, LLaVa code only neatly handles processing a single example at a time, due to the way the <image>
         # tokens are interleaved with the text; this code just loops over inputs (naive padding doesn't work...)
         #with torch.cuda.amp.autocast(dtype=self.dtype):
@@ -161,6 +156,7 @@ class LLaVaGemmaGaudi(LLaVa):
         return gen_texts if return_string_probabilities is None else gen_probabilities
 
     def _setup_devices(self):
+        """Adapted from: https://github.com/huggingface/optimum-habana/blob/820901ceb632db686c56c10b703301b9fb5d3c43/optimum/habana/transformers/training_args.py#L777"""
         if self.gaudi_config_name is not None:
             gaudi_config = GaudiConfig.from_pretrained(self.gaudi_config_name)
             if self.dtype == torch.bfloat16:
@@ -189,6 +185,8 @@ class LLaVaGemmaGaudi(LLaVa):
     def device(self) -> "torch.device":
         """
         The device used by this process.
+
+        Adapted from: https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
         """
         if not hasattr(self, "_device"):
             self._setup_devices()
@@ -198,6 +196,8 @@ class LLaVaGemmaGaudi(LLaVa):
     def distributed_state(self):
         """
         Get the distributed state.
+
+        Adapted from: https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
         """
         if not hasattr(self, "_distributed_state"):
             self._setup_devices()
@@ -207,6 +207,8 @@ class LLaVaGemmaGaudi(LLaVa):
     def num_processes(self):
         """
         The number of processes used in parallel.
+
+        Adapted from: https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
         """
         if not hasattr(self, "_distributed_state"):
             self._setup_devices()
@@ -218,6 +220,8 @@ class LLaVaGemmaGaudi(LLaVa):
     def process_index(self):
         """
         The index of the current process used.
+
+        Adapted from: https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
         """
         if not hasattr(self, "_distributed_state"):
             self._setup_devices()
@@ -229,6 +233,8 @@ class LLaVaGemmaGaudi(LLaVa):
     def local_process_index(self):
         """
         The index of the local process used.
+
+        Adapted from: https://github.com/huggingface/transformers/blob/v4.40.1/src/transformers/training_args.py
         """
         if not hasattr(self, "_distributed_state"):
             self._setup_devices()

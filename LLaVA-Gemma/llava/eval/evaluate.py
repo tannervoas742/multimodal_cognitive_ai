@@ -1,7 +1,14 @@
+"""
+Driver for evaluation of LLaVa models on Intel Gaudi2 HPU.
+
+References: https://github.com/TRI-ML/vlm-evaluation/blob/main/scripts/evaluate.py
+            https://github.com/TRI-ML/vlm-evaluation/blob/main/vlm_eval/models/__init__.py
+"""
+
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional
 
 import draccus
 from accelerate.utils import set_seed
@@ -11,7 +18,7 @@ from vlm_eval.conf import DatasetConfig, DatasetRegistry
 from vlm_eval.overwatch import initialize_overwatch
 from vlm_eval.tasks import get_task_runner
 
-from .llava_evaluator import LLaVaGemmaGaudi
+from .llava_gemma_evaluator import LLaVaGemmaGaudi
 
 # === Initializer Dispatch by Family ===
 ID2INITIALIZER = {"llava-gemma-v1.5": LLaVaGemmaGaudi}
@@ -26,6 +33,7 @@ def load_vlm(
     ddp_backend: str = 'hccl',
     gaudi_config_name: Optional[str] = None,
 ) -> VLM:
+    """Adapted from: https://github.com/TRI-ML/vlm-evaluation/blob/2092905d392e8dbedf01ed4b853df530e3cf9f35/vlm_eval/models/__init__.py#L14"""
     assert model_id in ID2INITIALIZER, f"Model ID `{model_id}` not supported!"
     return ID2INITIALIZER[model_id](
         model_id=model_id,
@@ -48,6 +56,7 @@ overwatch = initialize_overwatch(__name__)
 
 @dataclass
 class EvaluationConfig:
+    """Adapted from: https://github.com/TRI-ML/vlm-evaluation/blob/2092905d392e8dbedf01ed4b853df530e3cf9f35/scripts/evaluate.py#L32"""
     # fmt: off
 
     # DatasetConfig from `vlm_eval/conf/datasets.py`; override with --dataset.type `DatasetRegistry.<DATASET>.dataset_id`
@@ -91,6 +100,7 @@ class EvaluationConfig:
 
 @draccus.wrap()
 def evaluate(cfg: EvaluationConfig) -> None:
+    """Adapted from: https://github.com/TRI-ML/vlm-evaluation/blob/2092905d392e8dbedf01ed4b853df530e3cf9f35/scripts/evaluate.py#L79"""
     overwatch.info(f"Starting Evaluation for Dataset `{cfg.dataset.dataset_id}` w/ Model `{cfg.model_id}`")
     set_seed(cfg.seed)
 
